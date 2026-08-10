@@ -1,8 +1,9 @@
 # Ideas;
 
 - Zombie apocolypse
-    - Zombie vs animal & human
+    - Zombie vs human
     - Zombies will win
+    - Pathfinding algorithm
     - Features
         - See the zombies until their in x radius
         - Safe zones
@@ -12,3 +13,11 @@
         - Blocked pathway
     - Tools
         - Cure
+
+
+        - Day vs night
+            - Day;
+                - Zombies are freezed
+                - Humans are still able to move around
+                
+                

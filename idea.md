@@ -21,3 +21,10 @@
                 - Humans are still able to move around
                 
                 
+- Draw on JPanel inside of JFrame
+- Simulation must be watchable
+- Pause play and fast foward button
+- Day and night environment + logo shown
+- Time so you know the time
+- Count on zombies, humans and cures that are on the screen
+- Bottom of the screen will have a current effect status showing

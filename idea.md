@@ -36,3 +36,6 @@
 - Make the number of columns easily adjustable
     - Backend algoirthm to make sure the 2d array matches the number of column
 - Simulation should run by default and speeds should be adjustable by a button that goes form 0.5, 1, 2, and 4 times speed
+
+--- TO DO
+[] Look into path finding and why its not working. Look at `path = null;` in the Human.java file.

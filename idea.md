@@ -17,8 +17,9 @@
 
         - Day vs night
             - Day;
-                - Zombies are freezed
+                - Zombies are slowed
                 - Humans are still able to move around
+            - 
                 
                 
 - Draw on JPanel inside of JFrame
@@ -38,4 +39,22 @@
 - Simulation should run by default and speeds should be adjustable by a button that goes form 0.5, 1, 2, and 4 times speed
 
 --- TO DO
-[] Look into path finding and why its not working. Look at `path = null;` in the Human.java file.
+Achint:
+[] Look at implementing A* to the algorithm
+[] Add a nested Array for the back in the background
+
+Elise:
+[] Balance behaviour of zombies and humans
+[] UML Diagram for the whole team
+    - Make it in Mermaid
+
+Armak:
+[] Implement the new Icons
+
+An:
+[] Look into adding a FPS variable in `COMP2000-Assignment1/Main.java`
+
+Suraiya:
+[] Pausing and end screen
+
+----

@@ -86,31 +86,46 @@ public class GamePanel extends JPanel {
         dayNightTick = 0;
         repaint();
     }
-    private void handleCures() {
+  private void handleCures() {
     List<Cure> pickedCures = new ArrayList<>();
-    List<Zombie> curedZombies = new ArrayList<>();
-
     for (Cure c : cures) {
         for (Entity e : entities) {
-            if (e.getX() == c.getX() && e.getY() == c.getY()) {
-                if (e instanceof Zombie) {
-                    curedZombies.add((Zombie) e);
-                    pickedCures.add(c);
-                    break;
-                } else if (e instanceof Human) {
+            if (e instanceof Human && e.getX() == c.getX() && e.getY() == c.getY()) {
+                Human h = (Human) e;
+                if (!h.hasCure()) {
+                    h.giveCure(); 
                     pickedCures.add(c);
                     break;
                 }
             }
         }
     }
+    cures.removeAll(pickedCures);
+
+    
+    List<Zombie> curedZombies = new ArrayList<>();
+    for (Entity e : entities) {
+        if (e instanceof Human) {
+            Human h = (Human) e;
+            if (h.hasCure()) {
+                for (Entity other : entities) {
+                    if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()) {
+                        curedZombies.add((Zombie) other);
+                        h.useCure(); 
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Chuyển các Zombie được chữa thành Human mới
     for (Zombie z : curedZombies) {
         Human newHuman = new Human(z.getX(), z.getY());
         newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
         entities.remove(z);
         entities.add(newHuman);
     }
-    cures.removeAll(pickedCures);
 }
 
     // Slower logic tick: each entity decides its next grid cell
@@ -149,7 +164,10 @@ public class GamePanel extends JPanel {
             if (e instanceof Zombie) {
                 for (Entity other : entities) {
                     if (other instanceof Human && other.getX() == e.getX() && other.getY() == e.getY()) {
-                        toConvert.add(other);
+                        Human h = (Human) other;
+                        if (!h.hasCure()) {
+                            toConvert.add(other);
+                        }
                     }
                 }
             }

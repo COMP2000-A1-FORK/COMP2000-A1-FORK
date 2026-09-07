@@ -114,6 +114,7 @@ public class Main {
     private static void updateInfoLabel(JLabel label, GamePanel gamePanel) {
         label.setText("<html>Information on<br>number of humans,<br>zombies, etc.<br><br>"
                 + "Humans: " + gamePanel.getHumanCount() + "<br>"
-                + "Zombies: " + gamePanel.getZombieCount() + "</html>");
+                + "Zombies: " + gamePanel.getZombieCount() + "<br>"
+                + "Cures: " + gamePanel.getCureCount() + "</html>");
     }
 }

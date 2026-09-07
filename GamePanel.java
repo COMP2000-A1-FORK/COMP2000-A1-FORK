@@ -15,9 +15,11 @@ public class GamePanel extends JPanel {
     private final List<Building> buildings = new ArrayList<>();
     private final List<Point> trees = new ArrayList<>();
     private final Random rand = new Random();
-
+    private final List<Cure> cures = new ArrayList<>();
     private int dayNightTick = 0;
-
+    public int getCureCount() {
+    return cures.size();
+}
     public GamePanel() {
         setPreferredSize(new Dimension(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE));
         setupWorld();
@@ -70,10 +72,46 @@ public class GamePanel extends JPanel {
                 placed++;
             }
         }
+            cures.clear();
+        int placedCures = 0;
+        while (placedCures < 6) {
+            int cx = rand.nextInt(GRID_SIZE);
+            int cy = rand.nextInt(GRID_SIZE);
+        if (!isBlocked(cx, cy)) {
+            cures.add(new Cure(cx, cy));
+        placedCures++;
+    }
+}
 
         dayNightTick = 0;
         repaint();
     }
+    private void handleCures() {
+    List<Cure> pickedCures = new ArrayList<>();
+    List<Zombie> curedZombies = new ArrayList<>();
+
+    for (Cure c : cures) {
+        for (Entity e : entities) {
+            if (e.getX() == c.getX() && e.getY() == c.getY()) {
+                if (e instanceof Zombie) {
+                    curedZombies.add((Zombie) e);
+                    pickedCures.add(c);
+                    break;
+                } else if (e instanceof Human) {
+                    pickedCures.add(c);
+                    break;
+                }
+            }
+        }
+    }
+    for (Zombie z : curedZombies) {
+        Human newHuman = new Human(z.getX(), z.getY());
+        newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
+        entities.remove(z);
+        entities.add(newHuman);
+    }
+    cures.removeAll(pickedCures);
+}
 
     // Slower logic tick: each entity decides its next grid cell
     public void step() {
@@ -83,6 +121,7 @@ public class GamePanel extends JPanel {
             e.move(GRID_SIZE, GRID_SIZE, snapshot, blocked);
         }
         handleInfections();
+        handleCures();
     }
 
     // Fast render tick: advances day/night and glides entities toward their targets
@@ -153,6 +192,10 @@ public class GamePanel extends JPanel {
         for (Building b : buildings) {
             b.draw(g2, CELL_SIZE);
         }
+        for (Cure c : cures) {
+            c.draw(g2, CELL_SIZE);
+}
+        drawCelestialBody(g2, t);
         drawCelestialBody(g2, t);
         drawEntities(g2);
         drawNightOverlay(g2, t);

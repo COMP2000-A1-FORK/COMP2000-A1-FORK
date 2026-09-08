@@ -119,7 +119,7 @@ public class GamePanel extends JPanel {
         }
     }
 
-    // Chuyển các Zombie được chữa thành Human mới
+   //zombie to human conversion
     for (Zombie z : curedZombies) {
         Human newHuman = new Human(z.getX(), z.getY());
         newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());

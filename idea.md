@@ -44,7 +44,7 @@ Achint:
 [] Add a nested Array for the back in the background
 
 Elise:
-[] Balance behaviour of zombies and humans
+[X] Balance behaviour of zombies and humans
 [] UML Diagram for the whole team
     - Make it in Mermaid
 

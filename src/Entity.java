@@ -36,10 +36,8 @@ public abstract class Entity {
         this.nextY = gridY;
     }
 
-
-    // DEAD CODE??
-    public int genNextX() { return nextX; }
-    public int genNextY() { return nextY; }
+    public int getNextX() { return nextX; }
+    public int getNextY() { return nextY; }
 
     // Strategies call this instead of setPosition directionly
     public void planPosition(int x, int y) {

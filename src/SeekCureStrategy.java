@@ -16,7 +16,9 @@ public class SeekCureStrategy implements MovementStrategy {
         int dy = Integer.compare(target.getY(), self.getY());
         int newX = Math.max(0, Math.min(gridWidth - 1, self.getX() + dx));
         int newY = Math.max(0, Math.min(gridHeight - 1, self.getY() + dy));
-        if (!blocked[newY][newX] && !Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)) {
+        if (!blocked[newY][newX]
+            && !Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)
+            && !Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, self)) {
             self.planPosition(newX, newY);
         }
     }

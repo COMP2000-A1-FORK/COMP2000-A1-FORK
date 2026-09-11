@@ -128,9 +128,10 @@ public class GamePanel extends JPanel {
             Human h = (Human) e;
             if (h.hasCure()) {
                 for (Entity other : entities) {
-                    if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()) {
+                    if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()
+                    && !curedZombies.contains(other)) {
                         curedZombies.add((Zombie) other);
-                        h.useCure(); 
+                        h.useCure();
                         break;
                     }
                 }
@@ -165,8 +166,17 @@ public class GamePanel extends JPanel {
             e.move(GRID_SIZE, GRID_SIZE, snapshot, blocked);
         }
 
-        // Phase 3: now actually commit all the planned moves at once.
+        // Phase 3: apply plans. Two entities of the SAME class can't claim the same tile.
+        // Zombies may still step onto humans (to infect), and cure-carriers may step onto zombies.
+        java.util.Set<String> taken = new java.util.HashSet<>();
         for (Entity e : entities) {
+            int tx = e.getNextX();
+            int ty = e.getNextY();
+            String key = e.getClass().getSimpleName() + ":" + tx + "," + ty;
+            if (taken.contains(key)) {
+                continue; // same-class entity already claimed this cell
+            }
+            taken.add(key);
             e.applyPlannedMove();
         }
 
@@ -201,7 +211,7 @@ public class GamePanel extends JPanel {
                 for (Entity other : entities) {
                     if (other instanceof Human && other.getX() == e.getX() && other.getY() == e.getY()) {
                         Human h = (Human) other;
-                        if (!h.hasCure()) {
+                        if (!h.hasCure() && !toConvert.contains(other)) {
                             toConvert.add(other);
                         }
                     }

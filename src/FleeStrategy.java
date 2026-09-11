@@ -18,7 +18,8 @@ public class FleeStrategy implements MovementStrategy {
         int newX = next[0];
         int newY = next[1];
 
-        if (!Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)) {
+        if (!Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)
+            && !Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, self)) {
             self.planPosition(newX, newY);
         }
     }

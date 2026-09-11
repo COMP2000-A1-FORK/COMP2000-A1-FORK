@@ -18,9 +18,16 @@ public class GamePanel extends JPanel {
     private final List<Cure> cures = new ArrayList<>();
     private int dayNightTick = 0;
     private int[] [] background;
+
+    private static final int CURE_CAP = 6;           // never have more than this many on the map
+    private static final int CURE_SPAWN_EVERY = 10;  // spawn a new cure every N logic steps
+    private int cureSpawnCounter = 0;
+
     public int getCureCount() {
-    return cures.size();
+        return cures.size();
     }
+
+
     public GamePanel() throws WorldSetupException {
         setPreferredSize(new Dimension(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE));
         setupWorld();
@@ -103,50 +110,71 @@ public class GamePanel extends JPanel {
         }
 
         dayNightTick = 0;
+        cureSpawnCounter = 0;
         repaint();
     }
-  private void handleCures() {
-    List<Cure> pickedCures = new ArrayList<>();
-    for (Cure c : cures) {
-        for (Entity e : entities) {
-            if (e instanceof Human && e.getX() == c.getX() && e.getY() == c.getY()) {
-                Human h = (Human) e;
-                if (!h.hasCure()) {
-                    h.giveCure(); 
-                    pickedCures.add(c);
-                    break;
-                }
-            }
+
+    private void spawnCureIfNeeded() {
+        cureSpawnCounter++;
+        if (cureSpawnCounter < CURE_SPAWN_EVERY) return;
+        cureSpawnCounter = 0;
+
+        if (cures.size() >= CURE_CAP) return;
+
+        try {
+            Point p = findFreeCell(1000);
+            cures.add(new Cure(p.x, p.y));
+        } catch (WorldSetupException e) {
+            // Grid is too crowded — skip this spawn.
         }
     }
-    cures.removeAll(pickedCures);
 
-    
-    List<Zombie> curedZombies = new ArrayList<>();
-    for (Entity e : entities) {
-        if (e instanceof Human) {
-            Human h = (Human) e;
-            if (h.hasCure()) {
-                for (Entity other : entities) {
-                    if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()
-                    && !curedZombies.contains(other)) {
-                        curedZombies.add((Zombie) other);
-                        h.useCure();
+    private void handleCures() {
+        // Part 1: pick up any cure a human is standing on.
+        List<Cure> pickedCures = new ArrayList<>();
+        for (Cure c : cures) {
+            for (Entity e : entities) {
+                if (e instanceof Human && e.getX() == c.getX() && e.getY() == c.getY()) {
+                    Human h = (Human) e;
+                    if (!h.hasCure()) {
+                        h.giveCure();
+                        pickedCures.add(c);
                         break;
                     }
                 }
             }
         }
-    }
+        cures.removeAll(pickedCures);
 
-   //zombie to human conversion
-    for (Zombie z : curedZombies) {
-        Human newHuman = new Human(z.getX(), z.getY());
-        newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
-        entities.remove(z);
-        entities.add(newHuman);
+        // Part 2: any cure-carrier adjacent to a zombie cures it.
+        List<Zombie> curedZombies = new ArrayList<>();
+        for (Entity e : entities) {
+            if (e instanceof Human) {
+                Human h = (Human) e;
+                if (h.hasCure()) {
+                    for (Entity other : entities) {
+                        if (other instanceof Zombie) {
+                            int dx = Math.abs(other.getX() - h.getX());
+                            int dy = Math.abs(other.getY() - h.getY());
+                            if (dx <= 1 && dy <= 1 && !curedZombies.contains(other)) {
+                                curedZombies.add((Zombie) other);
+                                h.useCure();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Part 3: convert each cured zombie into a human.
+        for (Zombie z : curedZombies) {
+            Human newHuman = new Human(z.getX(), z.getY());
+            newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
+            entities.remove(z);
+            entities.add(newHuman);
+        }
     }
-}
 
     public void step() {
         boolean[][] blocked = computeBlockedGrid();
@@ -183,6 +211,9 @@ public class GamePanel extends JPanel {
         // Phase 4: resolve interactions using the new positions.
         handleInfections();
         handleCures();
+
+        // Phase 5: occasionally spawn a new cure so the world always has some.
+        spawnCureIfNeeded();
     }
 
     // Fast render tick: advances day/night and glides entities toward their targets
@@ -258,7 +289,7 @@ public class GamePanel extends JPanel {
         }
         for (Cure c : cures) {
             c.draw(g2, CELL_SIZE);
-}
+        }
         drawCelestialBody(g2, t);
         drawCelestialBody(g2, t);
         drawEntities(g2);

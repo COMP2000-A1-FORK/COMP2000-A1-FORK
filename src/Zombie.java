@@ -12,20 +12,27 @@ public class Zombie extends Entity {
 
     @Override
     public void move(int gridWidth, int gridHeight, Entity[] allEntities, boolean[][] blocked) {
+        // Find the nearest Human
         Human target = Entity.findNearest(allEntities, Human.class, gridX, gridY);
-
         if (target == null) {
-            return; // no humans left to chase
+            System.out.println("Z: No target found");
+            return;
         }
+        
+        int [] next = PathFinder.findNextStep(gridX, gridY, target.getX(), target.getY(), blocked, gridWidth);
+        if (next == null) {
+            System.out.println("Z: no path from (" + gridX + "," + gridY + ") to (" + target.getX() + "," + target.getY() + ")");
+            return; // No valid path found
+        }
+        int newX = next[0];
+        int newY = next[1];
 
-        int dx = Integer.compare(target.getX(), this.gridX); // -1, 0, or 1 towards target
-        int dy = Integer.compare(target.getY(), this.gridY);
-
-        int newX = Math.max(0, Math.min(gridWidth - 1, gridX + dx));
-        int newY = Math.max(0, Math.min(gridHeight - 1, gridY + dy));
-
-        if (!blocked[newY][newX] && !Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, this)) { 
-            setPosition(newX, newY); 
+        if (!Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, this)) {
+            // Move to the next cell
+            System.out.println("Z: (" + gridX + "," + gridY + ") -> (" + newX + "," + newY + ")");
+            planPosition(newX, newY);
+        } else {
+            System.out.println("Z: (" + gridX + "," + gridY + ") blocked by zombie at (" + newX + "," + newY + ")");
         }
     }
 }

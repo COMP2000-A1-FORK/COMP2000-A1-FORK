@@ -1,13 +1,26 @@
-public class FleeStrategy implements MovementStrategy { 
-    @Override public void move(Human self, int gridWidth, int gridHeight, Entity[] allEntities, boolean[][] blocked) {
-        Zombie nearestZombie = Entity.findNearest(allEntities, Zombie.class, self.getX(), self.getY());
-        if (nearestZombie == null) return; 
-        int dx = -Integer.compare(nearestZombie.getX(), self.getX()); 
-        int dy = -Integer.compare(nearestZombie.getY(), self.getY()); 
-        int newX = Math.max(0, Math.min(gridWidth - 1, self.getX() + dx)); 
-        int newY = Math.max(0, Math.min(gridHeight - 1, self.getY() + dy)); 
-        if (!blocked[newY][newX] && !Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)) {
-            self.setPosition(newX, newY); 
+public class FleeStrategy implements MovementStrategy {
+    @Override
+    public void move(Human self, int gridWidth, int gridHeight, Entity[] allEntities, boolean[][] blocked) {
+        Zombie threat = Entity.findNearest(allEntities, Zombie.class, self.getX(), self.getY());
+        if (threat == null) return;
+
+        // Pick the corner of the grid farthest from the zombie as the escape goal.
+        int farX = (threat.getX() < gridWidth / 2) ? gridWidth - 1 : 0;
+        int farY = (threat.getY() < gridHeight / 2) ? gridHeight - 1 : 0;
+
+        int[] next = PathFinder.findNextStep(
+                self.getX(), self.getY(),
+                farX, farY,
+                blocked, gridWidth);
+
+        if (next == null) return;
+
+        int newX = next[0];
+        int newY = next[1];
+
+        if (!Entity.isTileOccupiedBy(Human.class, newX, newY, allEntities, self)
+            && !Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, self)) {
+            self.planPosition(newX, newY);
         }
     }
 }

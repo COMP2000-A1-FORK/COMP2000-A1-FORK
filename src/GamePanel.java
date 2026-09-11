@@ -17,9 +17,18 @@ public class GamePanel extends JPanel {
     private final Random rand = new Random();
     private final List<Cure> cures = new ArrayList<>();
     private int dayNightTick = 0;
+    private boolean gameOver = false;
+    private String winnerText = "";
+    private int curesUsedCount = 0;
+
     public int getCureCount() {
-    return cures.size();
+        return cures.size();
     }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
     public GamePanel() throws WorldSetupException {
         setPreferredSize(new Dimension(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE));
         setupWorld();
@@ -34,7 +43,7 @@ public class GamePanel extends JPanel {
         buildings.add(new Building(2, 12, 3, 2));
         buildings.add(new Building(9, 14, 2, 2));
 
-        while (trees.size() < 30) { 
+        while (trees.size() < 30) {
             Point p = findFreeCell(1000); trees.add(p);
         }
     }
@@ -46,34 +55,34 @@ public class GamePanel extends JPanel {
         return false;
     }
 
-    private Point findFreeCell(int maxAttempts) throws WorldSetupException { 
-        for (int attempt = 0; attempt < maxAttempts; attempt++) { 
-            int x = rand.nextInt(GRID_SIZE); 
-            int y = rand.nextInt(GRID_SIZE); 
-            if (!isBlocked(x, y)) { 
-                return new Point(x, y); 
-            } 
-        } 
-        throw new WorldSetupException("Could not find a free cell after " + maxAttempts + " attempts — grid may be too crowded."); 
+    private Point findFreeCell(int maxAttempts) throws WorldSetupException {
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            int x = rand.nextInt(GRID_SIZE);
+            int y = rand.nextInt(GRID_SIZE);
+            if (!isBlocked(x, y)) {
+                return new Point(x, y);
+            }
+        }
+        throw new WorldSetupException("Could not find a free cell after " + maxAttempts + " attempts — grid may be too crowded.");
     }
 
     public void resetEntities() throws WorldSetupException {
         entities.clear();
 
         int placed = 0;
-        while (placed < 18) { 
-            Point p = findFreeCell(1000); 
-            entities.add(new Human(p.x, p.y)); 
-            placed++; 
-        } 
+        while (placed < 18) {
+            Point p = findFreeCell(1000);
+            entities.add(new Human(p.x, p.y));
+            placed++;
+        }
 
         placed = 0;
-        while (placed < 5) { 
-            Point p = findFreeCell(1000); 
-            entities.add(new Zombie(p.x, p.y)); 
-            placed++; 
-        }             
-        
+        while (placed < 5) {
+            Point p = findFreeCell(1000);
+            entities.add(new Zombie(p.x, p.y));
+            placed++;
+        }
+
         cures.clear();
         int placedCures = 0;
         while (placedCures < 6) {
@@ -83,62 +92,83 @@ public class GamePanel extends JPanel {
         }
 
         dayNightTick = 0;
+        gameOver = false;
+        winnerText = "";
+        curesUsedCount = 0;
         repaint();
     }
-  private void handleCures() {
-    List<Cure> pickedCures = new ArrayList<>();
-    for (Cure c : cures) {
-        for (Entity e : entities) {
-            if (e instanceof Human && e.getX() == c.getX() && e.getY() == c.getY()) {
-                Human h = (Human) e;
-                if (!h.hasCure()) {
-                    h.giveCure(); 
-                    pickedCures.add(c);
-                    break;
-                }
-            }
-        }
-    }
-    cures.removeAll(pickedCures);
 
-    
-    List<Zombie> curedZombies = new ArrayList<>();
-    for (Entity e : entities) {
-        if (e instanceof Human) {
-            Human h = (Human) e;
-            if (h.hasCure()) {
-                for (Entity other : entities) {
-                    if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()) {
-                        curedZombies.add((Zombie) other);
-                        h.useCure(); 
+    private void handleCures() {
+        List<Cure> pickedCures = new ArrayList<>();
+        for (Cure c : cures) {
+            for (Entity e : entities) {
+                if (e instanceof Human && e.getX() == c.getX() && e.getY() == c.getY()) {
+                    Human h = (Human) e;
+                    if (!h.hasCure()) {
+                        h.giveCure();
+                        pickedCures.add(c);
                         break;
                     }
                 }
             }
         }
-    }
+        cures.removeAll(pickedCures);
 
-   //zombie to human conversion
-    for (Zombie z : curedZombies) {
-        Human newHuman = new Human(z.getX(), z.getY());
-        newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
-        entities.remove(z);
-        entities.add(newHuman);
+
+        List<Zombie> curedZombies = new ArrayList<>();
+        for (Entity e : entities) {
+            if (e instanceof Human) {
+                Human h = (Human) e;
+                if (h.hasCure()) {
+                    for (Entity other : entities) {
+                        if (other instanceof Zombie && other.getX() == h.getX() && other.getY() == h.getY()) {
+                            curedZombies.add((Zombie) other);
+                            h.useCure();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //zombie to human conversion
+        for (Zombie z : curedZombies) {
+            Human newHuman = new Human(z.getX(), z.getY());
+            newHuman.syncRenderPosition(z.getRenderX(), z.getRenderY());
+            entities.remove(z);
+            entities.add(newHuman);
+            curesUsedCount++;
+        }
     }
-}
 
     // Slower logic tick: each entity decides its next grid cell
     public void step() {
+        if (gameOver) return;
+
         boolean[][] blocked = computeBlockedGrid();
         Entity[] snapshot = entities.toArray(new Entity[0]);
         for (Entity e : entities) {
-            if (e instanceof Human) { 
+            if (e instanceof Human) {
                 ((Human) e).setVisibleCures(cures);
             }
             e.move(GRID_SIZE, GRID_SIZE, snapshot, blocked);
         }
         handleInfections();
         handleCures();
+        checkGameOver();
+    }
+
+    private void checkGameOver() {
+        int humans = getHumanCount();
+        int zombies = getZombieCount();
+
+        if (humans == 0) {
+            gameOver = true;
+            winnerText = "ZOMBIES WIN";
+        } else if (zombies == 0) {
+            gameOver = true;
+            winnerText = "HUMANS WIN";
+        }
     }
 
     // Fast render tick: advances day/night and glides entities toward their targets
@@ -214,18 +244,19 @@ public class GamePanel extends JPanel {
         }
         for (Cure c : cures) {
             c.draw(g2, CELL_SIZE);
-}
-        drawCelestialBody(g2, t);
+        }
         drawCelestialBody(g2, t);
         drawEntities(g2);
         drawNightOverlay(g2, t);
+        if (gameOver) {
+            drawEndScreen(g2);
+        }
     }
 
     private void drawGrass(Graphics2D g2) {
         g2.setColor(new Color(86, 168, 74));
         g2.fillRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
 
-        // Scatter darker tufts for texture - fixed seed so it doesn't flicker every frame
         Random tuftRand = new Random(42);
         g2.setColor(new Color(70, 148, 60));
         for (int i = 0; i < 700; i++) {
@@ -234,7 +265,6 @@ public class GamePanel extends JPanel {
             g2.fillRect(x, y, 3, 3);
         }
 
-        // A second, lighter layer of tufts for extra depth
         Random tuftRand2 = new Random(99);
         g2.setColor(new Color(100, 180, 88));
         for (int i = 0; i < 500; i++) {
@@ -259,8 +289,6 @@ public class GamePanel extends JPanel {
         }
     }
 
-    // Draws the sun during the day half of the cycle, the moon during the night half,
-    // arcing across the sky as t goes from 0 to 1.
     private void drawCelestialBody(Graphics2D g2, double t) {
         int w = GRID_SIZE * CELL_SIZE;
         int h = GRID_SIZE * CELL_SIZE;
@@ -283,7 +311,6 @@ public class GamePanel extends JPanel {
         }
     }
 
-    // A translucent dark-blue tint that peaks at midnight and clears at noon
     private void drawNightOverlay(Graphics2D g2, double t) {
         double darkness = (1 - Math.cos(t * 2 * Math.PI)) / 2.0;
         int alpha = (int) (darkness * 140);
@@ -291,6 +318,26 @@ public class GamePanel extends JPanel {
             g2.setColor(new Color(10, 15, 50, alpha));
             g2.fillRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
         }
+    }
+
+    private void drawEndScreen(Graphics2D g2) {
+        int w = GRID_SIZE * CELL_SIZE;
+        int h = GRID_SIZE * CELL_SIZE;
+
+        g2.setColor(new Color(0, 0, 0, 170));
+        g2.fillRect(0, 0, w, h);
+
+        g2.setFont(new Font("SansSerif", Font.BOLD, 40));
+        FontMetrics titleFm = g2.getFontMetrics();
+        int titleWidth = titleFm.stringWidth(winnerText);
+        g2.setColor(Color.WHITE);
+        g2.drawString(winnerText, (w - titleWidth) / 2, h / 2 - 10);
+
+        String stats = "Cures used: " + curesUsedCount;
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 18));
+        FontMetrics statsFm = g2.getFontMetrics();
+        int statsWidth = statsFm.stringWidth(stats);
+        g2.drawString(stats, (w - statsWidth) / 2, h / 2 + 24);
     }
 
     private void drawEntities(Graphics2D g2) {

@@ -12,12 +12,12 @@ public class Main {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
 
-        GamePanel gamePanel; 
-        try { gamePanel = new GamePanel(); 
-        } 
-        catch (WorldSetupException e) { 
-            JOptionPane.showMessageDialog(null, e.getMessage(), "Startup Failed", JOptionPane.ERROR_MESSAGE); 
-            return; 
+        GamePanel gamePanel;
+        try {
+            gamePanel = new GamePanel();
+        } catch (WorldSetupException e) {
+            JOptionPane.showMessageDialog(null, e.getMessage(), "Startup Failed", JOptionPane.ERROR_MESSAGE);
+            return;
         }
         ClockIndicator clockIndicator = new ClockIndicator(gamePanel);
 
@@ -75,12 +75,6 @@ public class Main {
         frame.add(sidebar, BorderLayout.WEST);
         frame.add(layeredPane, BorderLayout.CENTER);
 
-        // Slower timer: each entity decides its next grid move
-        Timer logicTimer = new Timer(500, e -> {
-            gamePanel.step();
-            updateInfoLabel(infoLabel, gamePanel);
-        });
-
         // Fast timer: smooth walking animation, day/night cycle, clock widget
         Timer renderTimer = new Timer(16, e -> {
             gamePanel.tick();
@@ -88,7 +82,24 @@ public class Main {
         });
 
         final boolean[] running = {false};
+        final Timer[] logicTimerHolder = new Timer[1];
+
+        // Slower timer: each entity decides its next grid move
+        Timer logicTimer = new Timer(500, e -> {
+            gamePanel.step();
+            updateInfoLabel(infoLabel, gamePanel);
+            if (gamePanel.isGameOver()) {
+                logicTimerHolder[0].stop();
+                renderTimer.stop();
+                running[0] = false;
+                playButton.setText("Play");
+            }
+        });
+
+        logicTimerHolder[0] = logicTimer;
+
         playButton.addActionListener(e -> {
+            if (gamePanel.isGameOver()) return;
             if (running[0]) {
                 logicTimer.stop();
                 renderTimer.stop();
@@ -101,17 +112,17 @@ public class Main {
             running[0] = !running[0];
         });
 
-        resetButton.addActionListener(e -> { 
-            logicTimer.stop(); 
-            renderTimer.stop(); 
-            running[0] = false; 
-            playButton.setText("Play"); try { 
-                gamePanel.resetEntities(); 
-            } 
-            catch (WorldSetupException ex) { 
-                JOptionPane.showMessageDialog(null, ex.getMessage(), "Reset Failed", JOptionPane.ERROR_MESSAGE); 
-            } 
-            updateInfoLabel(infoLabel, gamePanel); 
+        resetButton.addActionListener(e -> {
+            logicTimer.stop();
+            renderTimer.stop();
+            running[0] = false;
+            playButton.setText("Play");
+            try {
+                gamePanel.resetEntities();
+            } catch (WorldSetupException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage(), "Reset Failed", JOptionPane.ERROR_MESSAGE);
+            }
+            updateInfoLabel(infoLabel, gamePanel);
         });
 
         closeButton.addActionListener(e -> frame.dispose());

@@ -17,6 +17,7 @@ public class GamePanel extends JPanel {
     private final Random rand = new Random();
     private final List<Cure> cures = new ArrayList<>();
     private int dayNightTick = 0;
+    private int[] [] background;
     public int getCureCount() {
     return cures.size();
     }
@@ -24,6 +25,24 @@ public class GamePanel extends JPanel {
         setPreferredSize(new Dimension(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE));
         setupWorld();
         resetEntities();
+    }
+
+    // Fills a 2D array with tile codes: 0 = plain grass, 1 = dark tuft,
+    // 2 = light tuft, 3 = tiny flower. Fixed seed so it's stable across runs.
+    private int[][] generateBackground() {
+        int[][] bg = new int[GRID_SIZE][GRID_SIZE];
+        Random bgRand = new Random(42);
+
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                int roll = bgRand.nextInt(100);
+                if (roll < 65)       bg[row][col] = 0;
+                else if (roll < 82)  bg[row][col] = 1;
+                else if (roll < 96)  bg[row][col] = 2;
+                else                 bg[row][col] = 3;
+            }
+        }
+        return bg;
     }
 
     private void setupWorld() throws WorldSetupException {
@@ -37,6 +56,7 @@ public class GamePanel extends JPanel {
         while (trees.size() < 30) { 
             Point p = findFreeCell(1000); trees.add(p);
         }
+        background = generateBackground();
     }
 
     private boolean isBlocked(int col, int row) {
@@ -127,16 +147,30 @@ public class GamePanel extends JPanel {
     }
 }
 
-    // Slower logic tick: each entity decides its next grid cell
     public void step() {
         boolean[][] blocked = computeBlockedGrid();
         Entity[] snapshot = entities.toArray(new Entity[0]);
+
+        // Phase 1: reset every entity's plan to "stay put".
         for (Entity e : entities) {
-            if (e instanceof Human) { 
+            e.resetPlan();
+        }
+
+        // Phase 2: ask every entity where it WANTS to go.
+        // Nobody actually moves yet. Everyone sees the same snapshot.
+        for (Entity e : entities) {
+            if (e instanceof Human) {
                 ((Human) e).setVisibleCures(cures);
             }
             e.move(GRID_SIZE, GRID_SIZE, snapshot, blocked);
         }
+
+        // Phase 3: now actually commit all the planned moves at once.
+        for (Entity e : entities) {
+            e.applyPlannedMove();
+        }
+
+        // Phase 4: resolve interactions using the new positions.
         handleInfections();
         handleCures();
     }
@@ -221,44 +255,6 @@ public class GamePanel extends JPanel {
         drawNightOverlay(g2, t);
     }
 
-    private void drawGrass(Graphics2D g2) {
-        g2.setColor(new Color(86, 168, 74));
-        g2.fillRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
-
-        // Scatter darker tufts for texture - fixed seed so it doesn't flicker every frame
-        Random tuftRand = new Random(42);
-        g2.setColor(new Color(70, 148, 60));
-        for (int i = 0; i < 700; i++) {
-            int x = tuftRand.nextInt(GRID_SIZE * CELL_SIZE);
-            int y = tuftRand.nextInt(GRID_SIZE * CELL_SIZE);
-            g2.fillRect(x, y, 3, 3);
-        }
-
-        // A second, lighter layer of tufts for extra depth
-        Random tuftRand2 = new Random(99);
-        g2.setColor(new Color(100, 180, 88));
-        for (int i = 0; i < 500; i++) {
-            int x = tuftRand2.nextInt(GRID_SIZE * CELL_SIZE);
-            int y = tuftRand2.nextInt(GRID_SIZE * CELL_SIZE);
-            g2.fillRect(x, y, 2, 2);
-        }
-    }
-
-    private void drawTrees(Graphics2D g2) {
-        for (Point p : trees) {
-            int px = p.x * CELL_SIZE;
-            int py = p.y * CELL_SIZE;
-
-            g2.setColor(new Color(90, 60, 30));
-            g2.fillRect(px + CELL_SIZE / 2 - 3, py + CELL_SIZE / 2, 6, CELL_SIZE / 2 - 4);
-
-            g2.setColor(new Color(30, 100, 40));
-            g2.fillOval(px + 2, py - 4, CELL_SIZE - 4, CELL_SIZE - 4);
-            g2.setColor(new Color(45, 130, 55));
-            g2.fillOval(px + 6, py, CELL_SIZE - 14, CELL_SIZE - 14);
-        }
-    }
-
     // Draws the sun during the day half of the cycle, the moon during the night half,
     // arcing across the sky as t goes from 0 to 1.
     private void drawCelestialBody(Graphics2D g2, double t) {
@@ -280,6 +276,62 @@ public class GamePanel extends JPanel {
             g2.fill(new Ellipse2D.Double(arcX - 14, arcY, 28, 28));
             g2.setColor(new Color(200, 200, 220));
             g2.fillOval((int) arcX - 8, (int) arcY + 4, 14, 14);
+        }
+    }
+
+    private void drawGrass(Graphics2D g2) {
+        // Base grass fill
+        g2.setColor(new Color(86, 168, 74));
+        g2.fillRect(0, 0, GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
+
+        Color darkTuft  = new Color(70, 148, 60);
+        Color lightTuft = new Color(100, 180, 88);
+        Color flower    = new Color(240, 220, 100);
+        Color stem      = new Color(120, 90, 40);
+
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                int tile = background[row][col];
+                int px = col * CELL_SIZE;
+                int py = row * CELL_SIZE;
+
+                switch (tile) {
+                    case 1:
+                        g2.setColor(darkTuft);
+                        g2.fillRect(px + 6,  py + 8,  3, 3);
+                        g2.fillRect(px + 18, py + 22, 3, 3);
+                        g2.fillRect(px + 30, py + 14, 3, 3);
+                        break;
+                    case 2:
+                        g2.setColor(lightTuft);
+                        g2.fillRect(px + 10, py + 30, 2, 2);
+                        g2.fillRect(px + 26, py + 10, 2, 2);
+                        break;
+                    case 3:
+                        g2.setColor(flower);
+                        g2.fillOval(px + CELL_SIZE / 2 - 3, py + CELL_SIZE / 2 - 3, 6, 6);
+                        g2.setColor(stem);
+                        g2.fillRect(px + CELL_SIZE / 2 - 1, py + CELL_SIZE / 2 + 3, 2, 5);
+                        break;
+                    default:
+                        break; // plain grass
+                }
+            }
+        }
+    }
+
+    private void drawTrees(Graphics2D g2) {
+        for (Point p : trees) {
+            int px = p.x * CELL_SIZE;
+            int py = p.y * CELL_SIZE;
+
+            g2.setColor(new Color(90, 60, 30));
+            g2.fillRect(px + CELL_SIZE / 2 - 3, py + CELL_SIZE / 2, 6, CELL_SIZE / 2 - 4);
+
+            g2.setColor(new Color(30, 100, 40));
+            g2.fillOval(px + 2, py - 4, CELL_SIZE - 4, CELL_SIZE - 4);
+            g2.setColor(new Color(45, 130, 55));
+            g2.fillOval(px + 6, py, CELL_SIZE - 14, CELL_SIZE - 14);
         }
     }
 

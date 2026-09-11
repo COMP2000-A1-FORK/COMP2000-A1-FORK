@@ -3,6 +3,8 @@ public abstract class Entity {
 
     protected int gridX;
     protected int gridY;
+    protected int nextX;
+    protected int nextY;
 
     // The pixel-smooth position used for drawing, which glides toward gridX/gridY
     // instead of jumping instantly - this is what makes movement look like walking.
@@ -27,6 +29,30 @@ public abstract class Entity {
     public double getRenderX() { return renderX; }
     public double getRenderY() { return renderY; }
     public String getEmoji() { return emoji; }
+
+    // Call this to set a reset position for the entity
+    public void resetPlan() {
+        this.nextX = gridX;
+        this.nextY = gridY;
+    }
+
+
+    // DEAD CODE??
+    public int genNextX() { return nextX; }
+    public int genNextY() { return nextY; }
+
+    // Strategies call this instead of setPosition directionly
+    public void planPosition(int x, int y) {
+        this.nextX = x;
+        this.nextY = y;
+    }
+
+    // Called after every entity has planned its next moves
+    public void applyPlannedMove() {
+        if (nextX != gridX || nextY != gridY) {
+            setPosition(nextX, nextY);
+        }
+    }
 
     public void setPosition(int x, int y) {
         this.gridX = x;

@@ -15,11 +15,13 @@ public class Zombie extends Entity {
         // Find the nearest Human
         Human target = Entity.findNearest(allEntities, Human.class, gridX, gridY);
         if (target == null) {
-            return; // No humans left
+            System.out.println("Z: No target found");
+            return;
         }
         
         int [] next = PathFinder.findNextStep(gridX, gridY, target.getX(), target.getY(), blocked, gridWidth);
         if (next == null) {
+            System.out.println("Z: no path from (" + gridX + "," + gridY + ") to (" + target.getX() + "," + target.getY() + ")");
             return; // No valid path found
         }
         int newX = next[0];
@@ -27,7 +29,10 @@ public class Zombie extends Entity {
 
         if (!Entity.isTileOccupiedBy(Zombie.class, newX, newY, allEntities, this)) {
             // Move to the next cell
+            System.out.println("Z: (" + gridX + "," + gridY + ") -> (" + newX + "," + newY + ")");
             planPosition(newX, newY);
+        } else {
+            System.out.println("Z: (" + gridX + "," + gridY + ") blocked by zombie at (" + newX + "," + newY + ")");
         }
     }
 }
